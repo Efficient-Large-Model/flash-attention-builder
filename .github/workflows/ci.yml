@@ -43,10 +43,12 @@ jobs:
 
               uv run pip wheel --no-build-isolation --no-deps \
                 flash_attn==${{ inputs.version }}
+
+                mv $(ls flash_attn-${{ inputs.version }}-*.whl | head -n 1) flash_attn-${{ inputs.version }}+py${{ matrix.python-version }}-torch${{ matrix.torch-version }}.whl
             '
 
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            flash_attn-*.whl
+            flash_attn-${{ inputs.version }}+py${{ matrix.python-version }}-torch${{ matrix.torch-version }}.whl
           tag_name: v${{ inputs.version }}
