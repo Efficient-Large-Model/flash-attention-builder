@@ -5,8 +5,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-
       - run: |
           docker run \
             --mount type=bind,source=${{ github.workspace }},target=/workspace \
@@ -19,9 +17,9 @@ jobs:
                 curl
 
               curl -LsSf https://astral.sh/uv/install.sh | sh
+              source $HOME/.local/bin/env
 
-              uv python pin 3.10
-              uv venv
+              uv venv --python 3.10
               uv pip install \
                 ninja \
                 packaging \
