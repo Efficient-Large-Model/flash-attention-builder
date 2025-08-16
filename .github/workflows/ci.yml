@@ -23,6 +23,7 @@ jobs:
               uv pip install \
                 ninja \
                 packaging \
+                pip \
                 psutil \
                 torch==2.7.1
 
