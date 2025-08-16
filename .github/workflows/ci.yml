@@ -1,0 +1,33 @@
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - run: |
+          docker run \
+            --mount type=bind,source=${{ github.workspace }},target=/workspace \
+            --rm \
+            --workdir /workspace \
+            nvcr.io/nvidia/cuda:12.9.1-devel-ubuntu20.04 \
+            bash -c '
+              apt-get update
+              apt-get install -y --no-install-recommends \
+                curl
+
+              curl -LsSf https://astral.sh/uv/install.sh | sh
+
+              uv python pin 3.10
+              uv venv
+              uv pip install \
+                ninja \
+                packaging \
+                psutil \
+                torch==2.7.1
+
+              uv run pip wheel --no-build-isolation --no-deps \
+                flash_attn==2.8.2
+            '
