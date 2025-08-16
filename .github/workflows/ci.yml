@@ -42,7 +42,7 @@ jobs:
                 torch==${{ matrix.torch-version }}
 
               uv run pip wheel --no-build-isolation --no-deps \
-                flash_attn==${{ inputs.version }}
+                flash-attn==${{ inputs.version }}
             '
 
       - run: |
