@@ -43,12 +43,16 @@ jobs:
 
               uv run pip wheel --no-build-isolation --no-deps \
                 flash_attn==${{ inputs.version }}
-
-                mv $(ls flash_attn-${{ inputs.version }}-*.whl | head -n 1) flash_attn-${{ inputs.version }}+py${{ matrix.python-version }}-torch${{ matrix.torch-version }}.whl
             '
+
+      - run: |
+          original_name=$(ls flash_attn-${{ inputs.version }}-cp3*-cp3*-linux_x86_64.whl | head -n 1)
+          new_name=$(echo $original_name | sed "s/^flash_attn-${{ inputs.version }}/flash_attn-${{ inputs.version }}+torch${{ matrix.torch-version }}/")
+
+          mv $original_name $new_name
 
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            flash_attn-${{ inputs.version }}+py${{ matrix.python-version }}-torch${{ matrix.torch-version }}.whl
+            flash_attn-${{ inputs.version }}+torch${{ matrix.torch-version }}-cp3*-cp3*-linux_x86_64.whl
           tag_name: v${{ inputs.version }}
