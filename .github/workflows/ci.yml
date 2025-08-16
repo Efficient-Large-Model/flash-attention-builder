@@ -10,14 +10,18 @@ jobs:
       matrix:
         cuda-version:
           - "12.9.1"
-        flash-attn-version:
-          - "2.8.2"
         python-version:
           - "3.10"
           - "3.12"
         torch-version:
           - "2.7.1"
+        version:
+          - "2.8.2"
     steps:
+      - run: |
+          echo "WHEEL_CUDA_VERSION=$(echo ${{ matrix.cuda-version }} | awk -F \. {'print $1 "." $2'})" >> $GITHUB_ENV
+          echo "WHEEL_TORCH_VERSION=$(echo ${{ matrix.torch-version }} | awk -F \. {'print $1 "." $2'})" >> $GITHUB_ENV
+
       - run: |
           docker run \
             --mount type=bind,source=${{ github.workspace }},target=/workspace \
@@ -41,17 +45,17 @@ jobs:
                 torch==${{ matrix.torch-version }}
 
               uv run pip wheel --no-build-isolation --no-deps \
-                flash-attn==${{ matrix.flash-attn-version }}
+                flash-attn==${{ matrix.version }}
             '
 
       - run: |
-          original_name=$(ls flash_attn-${{ matrix.flash-attn-version }}-cp3*-cp3*-linux_x86_64.whl | head -n 1)
-          new_name=$(echo $original_name | sed "s/^flash_attn-${{ matrix.flash-attn-version }}/flash_attn-${{ matrix.flash-attn-version }}+cuda${{ matrix.cuda-version }}torch${{ matrix.torch-version }}/")
+          original_name=$(ls flash_attn-${{ matrix.version }}-cp3*-cp3*-linux_x86_64.whl | head -n 1)
+          new_name=$(echo $original_name | sed "s/^flash_attn-${{ matrix.version }}/flash_attn-${{ matrix.version }}+cu${WHEEL_CUDA_VERSION}torch${WHEEL_TORCH_VERSION}/")
 
           mv $original_name $new_name
 
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            flash_attn-${{ matrix.flash-attn-version }}+cuda${{ matrix.cuda-version }}torch${{ matrix.torch-version }}-cp3*-cp3*-linux_x86_64.whl
-          tag_name: v${{ matrix.flash-attn-version }}
+            flash_attn-${{ matrix.version }}+cu*torch*-cp3*-cp3*-linux_x86_64.whl
+          tag_name: v${{ matrix.version }}
