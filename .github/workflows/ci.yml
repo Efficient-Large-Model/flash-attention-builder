@@ -10,6 +10,9 @@ jobs:
       matrix:
         cuda-version:
           - "12.9.1"
+        cxx11abi:
+          - "FALSE"
+          - "TRUE"
         python-version:
           - "3.10"
           - "3.12"
@@ -19,14 +22,16 @@ jobs:
           - "2.8.2"
     steps:
       - run: |
-          echo "WHEEL_CUDA_VERSION=$(echo ${{ matrix.cuda-version }} | awk -F \. {'print $1 "." $2'})" >> $GITHUB_ENV
+          echo "WHEEL_CUDA_VERSION=$(echo ${{ matrix.cuda-version }} | awk -F \. {'print $1 '})" >> $GITHUB_ENV
+          echo "WHEEL_PYTHON_VERSION=$(echo ${{ matrix.python-version }} | awk -F \. {'print $1 $2 '})" >> $GITHUB_ENV
           echo "WHEEL_TORCH_VERSION=$(echo ${{ matrix.torch-version }} | awk -F \. {'print $1 "." $2'})" >> $GITHUB_ENV
 
       - run: |
           docker run \
+            -e WHEEL_CUDA_VERSION=${WHEEL_CUDA_VERSION} \
+            -w /workspace \
             --mount type=bind,source=${{ github.workspace }},target=/workspace \
             --rm \
-            --workdir /workspace \
             nvcr.io/nvidia/cuda:${{ matrix.cuda-version }}-devel-ubuntu20.04 \
             bash -c '
               apt-get update
@@ -41,21 +46,22 @@ jobs:
                 ninja \
                 packaging \
                 pip \
-                psutil \
+                psutil
+              uv pip install \
+                --index-url https://download.pytorch.org/whl/cu${WHEEL_CUDA_VERSION} \
                 torch==${{ matrix.torch-version }}
 
-              uv run pip wheel --no-build-isolation --no-deps \
+              FLASH_ATTENTION_FORCE_CXX11_ABI=${{ matrix.cxx11abi}} uv run pip wheel --no-build-isolation --no-deps \
                 flash-attn==${{ matrix.version }}
             '
 
       - run: |
-          original_name=$(ls flash_attn-${{ matrix.version }}-cp3*-cp3*-linux_x86_64.whl | head -n 1)
-          new_name=$(echo $original_name | sed "s/^flash_attn-${{ matrix.version }}/flash_attn-${{ matrix.version }}+cu${WHEEL_CUDA_VERSION}torch${WHEEL_TORCH_VERSION}/")
-
-          mv $original_name $new_name
+          mv \
+            flash_attn-${{ matrix.version }}-cp${WHEEL_PYTHON_VERSION}-cp${WHEEL_PYTHON_VERSION}-linux_x86_64.whl \
+            flash_attn-${{ matrix.version }}+cu${WHEEL_CUDA_VERSION}torch${WHEEL_TORCH_VERSION}cxx11abi${{ matrix.cxx11abi }}-cp${WHEEL_PYTHON_VERSION}-cp${WHEEL_PYTHON_VERSION}-linux_x86_64.whl
 
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            flash_attn-${{ matrix.version }}+cu*torch*-cp3*-cp3*-linux_x86_64.whl
+            flash_attn-*.whl
           tag_name: v${{ matrix.version }}
