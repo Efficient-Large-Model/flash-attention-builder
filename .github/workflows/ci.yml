@@ -28,7 +28,6 @@ jobs:
 
       - run: |
           docker run \
-            -e WHEEL_CUDA_VERSION=${WHEEL_CUDA_VERSION} \
             -w /workspace \
             --mount type=bind,source=${{ github.workspace }},target=/workspace \
             --rm \
@@ -48,10 +47,9 @@ jobs:
                 pip \
                 psutil
               uv pip install \
-                --index-url https://download.pytorch.org/whl/cu${WHEEL_CUDA_VERSION} \
                 torch==${{ matrix.torch-version }}
 
-              FLASH_ATTENTION_FORCE_CXX11_ABI=${{ matrix.cxx11abi}} uv run pip wheel --no-build-isolation --no-deps \
+              FLASH_ATTENTION_FORCE_CXX11_ABI=${{ matrix.cxx11abi }} uv run pip wheel --no-build-isolation --no-deps \
                 flash-attn==${{ matrix.version }}
             '
 
