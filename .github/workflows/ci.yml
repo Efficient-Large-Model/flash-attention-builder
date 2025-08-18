@@ -26,7 +26,7 @@ jobs:
         version:
           - "2.8.3" 
           - "2.8.2"
-          - "2.7.4"
+          - "2.7.4.post1"
     steps:
       - run: |
           echo "WHEEL_CUDA_VERSION=$(echo ${{ matrix.cuda-version }} | awk -F \. {'print $1 '})" >> $GITHUB_ENV
