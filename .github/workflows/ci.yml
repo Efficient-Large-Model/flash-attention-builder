@@ -36,6 +36,15 @@ jobs:
           echo "WHEEL_TORCH_VERSION=$(echo ${{ matrix.torch-version }} | awk -F \. {'print $1 "." $2'})" >> $GITHUB_ENV
 
       - run: |
+          echo "WHEEL_FILENAME=flash_attn-${{ matrix.version }}+cu${WHEEL_CUDA_VERSION}torch${WHEEL_TORCH_VERSION}cxx11abiFALSE-cp${WHEEL_PYTHON_VERSION}-cp${WHEEL_PYTHON_VERSION}-linux_x86_64.whl" >> $GITHUB_ENV
+
+      - continue-on-error: true
+        id: check-official-wheel-exists
+        run: |
+          curl -I --fail https://github.com/Dao-AILab/flash-attention/releases/download/v${{ matrix.version }}/${WHEEL_FILENAME}
+
+      - if: ${{ steps.check-official-wheel-exists.outcome == 'success' }}
+        run: |
           docker run \
             -w /workspace \
             --mount type=bind,source=${{ github.workspace }},target=/workspace \
@@ -60,14 +69,12 @@ jobs:
               uv pip install \
                 torch==${{ matrix.torch-version }}
 
-              uv run pip wheel --no-build-isolation --no-deps \
+              MAX_JOBS=1 uv run pip wheel --no-build-isolation --no-deps \
                 flash-attn==${{ matrix.version }}
             '
 
-      - run: |
-          mv \
-            flash_attn-${{ matrix.version }}-cp${WHEEL_PYTHON_VERSION}-cp${WHEEL_PYTHON_VERSION}-linux_x86_64.whl \
-            flash_attn-${{ matrix.version }}+cu${WHEEL_CUDA_VERSION}torch${WHEEL_TORCH_VERSION}cxx11abiFALSE-cp${WHEEL_PYTHON_VERSION}-cp${WHEEL_PYTHON_VERSION}-linux_x86_64.whl
+          test $(ls flash_attn-*.whl | wc -l) -eq 1
+          mv flash_attn-*.whl ${WHEEL_FILENAME}
 
       - uses: softprops/action-gh-release@v2
         with:
