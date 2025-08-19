@@ -21,19 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  create-release:
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - uses: softprops/action-gh-release@v2
-        with:
-          make_latest: ${{ inputs.is_latest }}
-          tag_name: v${{ inputs.version }}
-
-  build-wheels:
-    needs:
-      - create-release
+  build:
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -71,7 +59,8 @@ jobs:
             bash -c '
               apt-get update
               apt-get install -y --no-install-recommends \
-                curl
+                curl \
+                git
 
               curl -LsSf https://astral.sh/uv/install.sh | sh
               source $HOME/.local/bin/env
@@ -87,7 +76,7 @@ jobs:
               uv pip install \
                 torch==${{ matrix.torch-version }}
 
-              MAX_JOBS=1 uv run pip wheel --no-build-isolation --no-deps \
+              MAX_JOBS=1 uv run pip wheel --no-build-isolation --no-deps --verbose \
                 flash-attn==${{ inputs.version }}
             '
 
@@ -95,7 +84,7 @@ jobs:
 
           mv flash_attn-*.whl ${WHEEL_FILENAME}
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v2.2.1
         with:
           files: |
             flash_attn-*.whl
