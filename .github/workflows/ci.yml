@@ -1,5 +1,7 @@
 on:
   push:
+  schedule:
+    - cron: 0 0 * * *
   workflow_dispatch:
 
 concurrency:
@@ -7,21 +9,51 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  get-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.get-versions.outputs.versions }}
+    steps:
+      - name: Get Flash Attention versions
+        id: get-versions
+        run: |
+          RELEASES=$(curl -s https://api.github.com/repos/Dao-AILab/flash-attention/releases)
+          
+          VERSIONS=$(echo "$RELEASES" | jq -r '.[].tag_name | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+(\\.(post|rc)[0-9]+)?$")) | sub("^v"; "")')
+          
+          VERSIONS_JSON=$(echo "$VERSIONS" | jq -R -s 'split("\n") | map(select(length > 0))')
+          
+          echo "versions=$VERSIONS_JSON" >> $GITHUB_OUTPUT
+
+  release:
+    needs:
+      - get-versions
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ${{ fromJSON(needs.get-versions.outputs.versions) }}
+    steps:
+      - uses: softprops/action-gh-release@v2
+        with:
+          make_latest: ${{ matrix.version == fromJSON(needs.get-versions.outputs.versions)[0] }}
+          tag_name: v${{ matrix.version }}
+
   build:
+    needs:
+      - get-versions
+      - release
     permissions:
       contents: write
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - "2.7.4.post1"
-          - "2.8.2"
-          - "2.8.3"
+        version: ${{ fromJson(needs.get-versions.outputs.versions) }}
         cuda-version:
           - "12.9.1"
         torch-version:
-          - "2.4.0"
+          - "2.4.1"
           - "2.5.1"
           - "2.6.0"
           - "2.7.1"
@@ -37,7 +69,7 @@ jobs:
           WHEEL_FILENAME="flash_attn-${{ matrix.version }}+cu${WHEEL_CUDA_VERSION}torch${WHEEL_TORCH_VERSION}cxx11abiFALSE-cp${WHEEL_PYTHON_VERSION}-cp${WHEEL_PYTHON_VERSION}-linux_x86_64.whl"
 
           curl -I --fail https://github.com/Dao-AILab/flash-attention/releases/download/v${{ matrix.version }}/${WHEEL_FILENAME} || {
-            echo "Missing official wheel for current matrix configuration. Skipping build."
+            echo "::notice ::No corresponding official build found for current matrix configuration. Skipping build."
             exit 0
           }
 
