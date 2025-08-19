@@ -62,7 +62,7 @@ jobs:
               uv pip install \
                 torch==${{ matrix.torch-version }}
 
-              MAX_JOBS=1 uv run pip wheel --no-build-isolation --no-deps \
+              MAX_JOBS=1 uv run pip wheel --no-build-isolation --no-binary flash-attn --no-deps \
                 flash-attn==${{ matrix.version }}
             '
 
