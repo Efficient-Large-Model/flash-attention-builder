@@ -54,7 +54,9 @@ jobs:
                 ninja \
                 packaging \
                 pip \
-                psutil
+                psutil \
+                setuptools \
+                wheeel
               uv pip install \
                 torch==${{ matrix.torch-version }}
 
