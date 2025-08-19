@@ -16,95 +16,21 @@ jobs:
     steps:
       - id: get-versions
         run: |
-            curl -s https://api.github.com/repos/Dao-AILab/flash-attention/releases \
-              | jq -r '.[].tag_name | sub("^v"; "")' \
-              | jq -Rcs 'split("\n") | map(select(length > 0))' \
-              | echo "versions=$(cat)" >> "$GITHUB_OUTPUT"
-
-  release:
-    needs:
-      - get-versions
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        version: ${{ fromJSON(needs.get-versions.outputs.versions) }}
-    steps:
-      - uses: softprops/action-gh-release@v2
-        with:
-          make_latest: ${{ matrix.version == fromJSON(needs.get-versions.outputs.versions)[0] }}
-          tag_name: v${{ matrix.version }}
+          curl -s https://api.github.com/repos/Dao-AILab/flash-attention/releases?per_page=10 \
+            | jq -r '.[] | select(.assets | length > 0) | .tag_name | sub("^v"; "")' \
+            | jq -Rcs 'split("\n") | map(select(length > 0))' \
+            | echo "versions=$(cat)" >> "$GITHUB_OUTPUT"
 
   build:
     needs:
       - get-versions
-      - release
     permissions:
       contents: write
-    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        version: ${{ fromJson(needs.get-versions.outputs.versions) }}
-        cuda-version:
-          - "12.9.1"
-        torch-version:
-          - "2.4.1"
-          - "2.5.1"
-          - "2.6.0"
-          - "2.7.1"
-          - "2.8.0"
-        python-version:
-          - "3.10"
-          - "3.12"
-    steps:
-      - run: |
-          WHEEL_CUDA_VERSION="$(echo ${{ matrix.cuda-version }} | awk -F \. {'print $1 '})"
-          WHEEL_PYTHON_VERSION="$(echo ${{ matrix.python-version }} | awk -F \. {'print $1 $2 '})"
-          WHEEL_TORCH_VERSION="$(echo ${{ matrix.torch-version }} | awk -F \. {'print $1 "." $2'})"
-          WHEEL_FILENAME="flash_attn-${{ matrix.version }}+cu${WHEEL_CUDA_VERSION}torch${WHEEL_TORCH_VERSION}cxx11abiFALSE-cp${WHEEL_PYTHON_VERSION}-cp${WHEEL_PYTHON_VERSION}-linux_x86_64.whl"
-
-          curl -I --fail https://github.com/Dao-AILab/flash-attention/releases/download/v${{ matrix.version }}/${WHEEL_FILENAME} || {
-            echo "::notice ::No corresponding official build found for current matrix configuration. Skipping build."
-            exit 0
-          }
-
-          docker run \
-            -w /workspace \
-            --mount type=bind,source=${{ github.workspace }},target=/workspace \
-            --rm \
-            nvcr.io/nvidia/cuda:${{ matrix.cuda-version }}-devel-ubuntu20.04 \
-            bash -c '
-              apt-get update
-              apt-get install -y --no-install-recommends \
-                curl
-
-              curl -LsSf https://astral.sh/uv/install.sh | sh
-              source $HOME/.local/bin/env
-
-              uv venv --python ${{ matrix.python-version }}
-              uv pip install \
-                ninja \
-                packaging \
-                pip \
-                psutil \
-                setuptools \
-                wheel
-              uv pip install \
-                torch==${{ matrix.torch-version }}
-
-              MAX_JOBS=1 uv run pip wheel --no-build-isolation --no-deps \
-                flash-attn==${{ matrix.version }}
-            '
-
-          test $(ls flash_attn-*.whl | wc -l) -eq 1
-
-          mv flash_attn-*.whl ${WHEEL_FILENAME}
-
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            flash_attn-*.whl
-          tag_name: v${{ matrix.version }}
+        version: ${{ fromJSON(needs.get-versions.outputs.versions) }}
+    uses: ./.github/workflows/build.yml
+    with:
+      is_latest: ${{ matrix.version == fromJSON(needs.get-versions.outputs.versions)[0] }}
+      version: ${{ matrix.version }}

@@ -1,0 +1,102 @@
+on:
+  workflow_call:
+    inputs:
+      is_latest:
+        type: boolean
+      version:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      is_latest:
+        description: Whether this is the latest release
+        type: boolean
+      version:
+        description: The version of the release
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.version }}
+  cancel-in-progress: true
+
+jobs:
+  create-release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: softprops/action-gh-release@v2
+        with:
+          make_latest: ${{ inputs.is_latest }}
+          tag_name: v${{ inputs.version }}
+
+  build-wheels:
+    needs:
+      - create-release
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cuda-version:
+          - "12.9.1"
+        torch-version:
+          - "2.4.1"
+          - "2.5.1"
+          - "2.6.0"
+          - "2.7.1"
+          - "2.8.0"
+        python-version:
+          - "3.10"
+          - "3.12"
+    steps:
+      - run: |
+          WHEEL_CUDA_VERSION="$(echo ${{ matrix.cuda-version }} | awk -F \. {'print $1 '})"
+          WHEEL_PYTHON_VERSION="$(echo ${{ matrix.python-version }} | awk -F \. {'print $1 $2 '})"
+          WHEEL_TORCH_VERSION="$(echo ${{ matrix.torch-version }} | awk -F \. {'print $1 "." $2'})"
+          WHEEL_FILENAME="flash_attn-${{ inputs.version }}+cu${WHEEL_CUDA_VERSION}torch${WHEEL_TORCH_VERSION}cxx11abiFALSE-cp${WHEEL_PYTHON_VERSION}-cp${WHEEL_PYTHON_VERSION}-linux_x86_64.whl"
+
+          curl -I --fail https://github.com/Dao-AILab/flash-attention/releases/download/v${{ inputs.version }}/${WHEEL_FILENAME} || {
+            echo "::notice ::No corresponding official build found for current matrix configuration. Skipping build."
+            exit 0
+          }
+
+          docker run \
+            -w /workspace \
+            --mount type=bind,source=${{ github.workspace }},target=/workspace \
+            --rm \
+            nvcr.io/nvidia/cuda:${{ matrix.cuda-version }}-devel-ubuntu20.04 \
+            bash -c '
+              apt-get update
+              apt-get install -y --no-install-recommends \
+                curl
+
+              curl -LsSf https://astral.sh/uv/install.sh | sh
+              source $HOME/.local/bin/env
+
+              uv venv --python ${{ matrix.python-version }}
+              uv pip install \
+                ninja \
+                packaging \
+                pip \
+                psutil \
+                setuptools \
+                wheel
+              uv pip install \
+                torch==${{ matrix.torch-version }}
+
+              MAX_JOBS=1 uv run pip wheel --no-build-isolation --no-deps \
+                flash-attn==${{ inputs.version }}
+            '
+
+          test $(ls flash_attn-*.whl | wc -l) -eq 1
+
+          mv flash_attn-*.whl ${WHEEL_FILENAME}
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            flash_attn-*.whl
+          tag_name: v${{ inputs.version }}
