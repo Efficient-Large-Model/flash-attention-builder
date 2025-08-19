@@ -65,7 +65,7 @@ jobs:
                 pip \
                 psutil \
                 setuptools \
-                wheeel
+                wheel
               uv pip install \
                 torch==${{ matrix.torch-version }}
 
