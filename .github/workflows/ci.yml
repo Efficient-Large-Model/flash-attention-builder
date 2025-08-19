@@ -36,7 +36,10 @@ jobs:
           WHEEL_TORCH_VERSION="$(echo ${{ matrix.torch-version }} | awk -F \. {'print $1 "." $2'})"
           WHEEL_FILENAME="flash_attn-${{ matrix.version }}+cu${WHEEL_CUDA_VERSION}torch${WHEEL_TORCH_VERSION}cxx11abiFALSE-cp${WHEEL_PYTHON_VERSION}-cp${WHEEL_PYTHON_VERSION}-linux_x86_64.whl"
 
-          curl -I --fail https://github.com/Dao-AILab/flash-attention/releases/download/v${{ matrix.version }}/${WHEEL_FILENAME}
+          curl -I --fail https://github.com/Dao-AILab/flash-attention/releases/download/v${{ matrix.version }}/${WHEEL_FILENAME} || {
+            echo "Missing official wheel for current matrix configuration. Skipping build."
+            exit 0
+          }
 
           docker run \
             -w /workspace \
