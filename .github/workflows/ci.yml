@@ -24,6 +24,8 @@ jobs:
   release:
     needs:
       - get-versions
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
