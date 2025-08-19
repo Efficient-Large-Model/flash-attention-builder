@@ -2,6 +2,10 @@ on:
   push:
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
 jobs:
   build:
     permissions:
@@ -12,9 +16,6 @@ jobs:
       matrix:
         cuda-version:
           - "12.9.1"
-        cxx11abi:
-          - "FALSE"
-          - "TRUE"
         python-version:
           - "3.10"
           - "3.12"
@@ -57,14 +58,14 @@ jobs:
               uv pip install \
                 torch==${{ matrix.torch-version }}
 
-              FLASH_ATTENTION_FORCE_CXX11_ABI=${{ matrix.cxx11abi }} uv run pip wheel --no-build-isolation --no-deps \
+              uv run pip wheel --no-build-isolation --no-deps \
                 flash-attn==${{ matrix.version }}
             '
 
       - run: |
           mv \
             flash_attn-${{ matrix.version }}-cp${WHEEL_PYTHON_VERSION}-cp${WHEEL_PYTHON_VERSION}-linux_x86_64.whl \
-            flash_attn-${{ matrix.version }}+cu${WHEEL_CUDA_VERSION}torch${WHEEL_TORCH_VERSION}cxx11abi${{ matrix.cxx11abi }}-cp${WHEEL_PYTHON_VERSION}-cp${WHEEL_PYTHON_VERSION}-linux_x86_64.whl
+            flash_attn-${{ matrix.version }}+cu${WHEEL_CUDA_VERSION}torch${WHEEL_TORCH_VERSION}cxx11abiFALSE-cp${WHEEL_PYTHON_VERSION}-cp${WHEEL_PYTHON_VERSION}-linux_x86_64.whl
 
       - uses: softprops/action-gh-release@v2
         with:
