@@ -34,3 +34,29 @@ jobs:
     with:
       is_latest: ${{ matrix.version == fromJSON(needs.get-versions.outputs.versions)[0] }}
       version: ${{ matrix.version }}
+
+  release:
+    concurrency:
+      group: release-${{ matrix.version }}
+      cancel-in-progress: true
+    needs:
+      - build
+      - get-versions
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ${{ fromJSON(needs.get-versions.outputs.versions) }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            *.whl
+          preserve_order: true
+          tag_name: v${{ matrix.version }}

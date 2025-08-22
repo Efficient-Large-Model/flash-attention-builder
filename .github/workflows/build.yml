@@ -16,10 +16,6 @@ on:
         required: true
         type: string
 
-concurrency:
-  group: ${{ github.workflow }}-${{ inputs.version }}
-  cancel-in-progress: true
-
 jobs:
   build:
     runs-on: self-hosted
@@ -93,22 +89,3 @@ jobs:
           path: |
             ${{ steps.build-wheel.outputs.wheel-filename }}
           if-no-files-found: ignore
-
-  release:
-    needs: build
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all wheel artifacts
-        uses: actions/download-artifact@v4
-        with:
-          merge-multiple: true
-
-      - name: Release wheels
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            *.whl
-          preserve_order: true
-          tag_name: v${{ inputs.version }}
