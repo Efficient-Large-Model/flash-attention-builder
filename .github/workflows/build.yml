@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
@@ -38,6 +38,8 @@ jobs:
           - "3.10"
           - "3.12"
     steps:
+      - uses: astral-sh/setup-uv@v6
+      
       - id: build-wheel
         run: |
           WHEEL_CUDA_VERSION="$(echo ${{ matrix.cuda-version }} | awk -F \. {'print $1 '})"
@@ -55,35 +57,30 @@ jobs:
             exit 0
           } || true
 
-          docker run \
-            -w /workspace \
-            --memory-swap -1 \
-            --mount type=bind,source=${{ github.workspace }},target=/workspace \
-            --rm \
-            nvcr.io/nvidia/cuda:${{ matrix.cuda-version }}-devel-ubuntu20.04 \
-            bash -c '
-              apt-get update
-              apt-get install -y --no-install-recommends \
-                curl \
-                git
+          conda create -p conda_env \
+            python=${{ matrix.python-version }} \
+            nvidia::cuda=${{ matrix.cuda-version }}
 
-              curl -LsSf https://astral.sh/uv/install.sh | sh
-              source $HOME/.local/bin/env
+          eval "$(conda shell.bash hook)"
+          conda activate ./conda_env
 
-              uv venv --python ${{ matrix.python-version }}
-              uv pip install \
-                ninja \
-                packaging \
-                pip \
-                psutil \
-                setuptools \
-                wheel
-              uv pip install \
-                torch==${{ matrix.torch-version }}
+          uv venv --python ${{ matrix.python-version }}
+          uv pip install \
+            ninja \
+            packaging \
+            pip \
+            psutil \
+            setuptools \
+            wheel
+          uv pip install \
+            torch==${{ matrix.torch-version }}
 
-              FLASH_ATTENTION_FORCE_BUILD="TRUE" MAX_JOBS=1 uv run pip wheel --no-build-isolation --no-deps --verbose \
-                flash-attn==${{ inputs.version }}
-            '
+          FLASH_ATTENTION_FORCE_BUILD=TRUE srun \
+            --account $VILA_SLURM_ACCOUNT \
+            --partition cpu \
+            --time 1-00:00:00 \
+            uv run pip wheel --no-build-isolation --no-deps --verbose \
+              flash-attn==${{ inputs.version }}
 
           test $(ls *.whl | wc -l) -eq 1
           mv *.whl ${WHEEL_FILENAME}
