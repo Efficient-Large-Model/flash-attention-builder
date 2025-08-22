@@ -47,12 +47,12 @@ jobs:
           echo "wheel-filename=flash_attn-${{ inputs.version }}+cu${WHEEL_CUDA_VERSION}torch${WHEEL_TORCH_VERSION}cxx11abiFALSE-cp${WHEEL_PYTHON_VERSION}-cp${WHEEL_PYTHON_VERSION}-linux_x86_64.whl" >> "$GITHUB_OUTPUT"
 
       - run: |
-          curl -I --fail https://github.com/Dao-AILab/flash-attention/releases/download/v${{ inputs.version }}/${{ steps.get-wheel-filename.outputs.wheel-filename }} || {
+          curl -Is --fail https://github.com/Dao-AILab/flash-attention/releases/download/v${{ inputs.version }}/${{ steps.get-wheel-filename.outputs.wheel-filename }} || {
             echo "::notice ::No corresponding official build found for current matrix configuration. Skipping build."
             exit 0
           }
 
-          curl -I --fail https://github.com/${{ github.repository }}/releases/download/v${{ inputs.version }}/${{ steps.get-wheel-filename.outputs.wheel-filename }} && {
+          curl -Is --fail https://github.com/${{ github.repository }}/releases/download/v${{ inputs.version }}/${{ steps.get-wheel-filename.outputs.wheel-filename }} && {
             echo "::notice ::Wheel already exists in the release. Skipping build."
             exit 0
           } || true
