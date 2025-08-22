@@ -76,7 +76,7 @@ jobs:
               uv pip install \
                 torch==${{ matrix.torch-version }}
 
-              FLASH_ATTENTION_FORCE_BUILD="TRUE" MAX_JOBS=1 uv run pip wheel --no-build-isolation --no-deps --verbose \
+              FLASH_ATTENTION_FORCE_BUILD="TRUE" MAX_JOBS=1 NVCC_THREADS=2 uv run pip wheel --no-build-isolation --no-deps --verbose \
                 flash-attn==${{ inputs.version }}
             '
 
