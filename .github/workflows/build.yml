@@ -34,12 +34,6 @@ jobs:
           - "3.10"
           - "3.12"
     steps:
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - uses: astral-sh/setup-uv@v6
-
       - id: get-wheel-filename
         run: |
           WHEEL_CUDA_VERSION="$(echo ${{ matrix.cuda-version }} | awk -F. '{print $1}')"
@@ -51,6 +45,12 @@ jobs:
       - continue-on-error: true
         run: |
           curl -Is --fail https://github.com/Dao-AILab/flash-attention/releases/download/v${{ inputs.version }}/${{ steps.get-wheel-filename.outputs.wheel-filename }}
+
+      - if: ${{ success() }}
+        uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: true
+          python-version: ${{ matrix.python-version }}
 
       - if: ${{ success() }}
         run: |
