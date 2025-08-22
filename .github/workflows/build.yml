@@ -47,6 +47,14 @@ jobs:
           curl -Is --fail https://github.com/Dao-AILab/flash-attention/releases/download/v${{ inputs.version }}/${{ steps.get-wheel-filename.outputs.wheel-filename }}
 
       - if: ${{ success() }}
+        uses: Jimver/cuda-toolkit@v0.2.27
+        with:
+          cuda: ${{ matrix.cuda-version }}
+          linux-local-args: '["--toolkit"]'
+          method: 'network'
+          sub-packages: '["nvcc"]'
+
+      - if: ${{ success() }}
         uses: astral-sh/setup-uv@v6
         with:
           activate-environment: true
@@ -65,12 +73,8 @@ jobs:
 
       - if: ${{ success() }}
         run: |
-          FLASH_ATTENTION_FORCE_BUILD=TRUE srun \
-            --account $VILA_SLURM_ACCOUNT \
-            --partition cpu \
-            --time 1-00:00:00 \
-            uv run pip wheel --no-build-isolation --no-deps --verbose \
-              flash-attn==${{ inputs.version }}
+          FLASH_ATTENTION_FORCE_BUILD=TRUE uv run pip wheel --no-build-isolation --no-deps --verbose \
+            flash-attn==${{ inputs.version }}
 
       - if: ${{ success() }}
         run: |
