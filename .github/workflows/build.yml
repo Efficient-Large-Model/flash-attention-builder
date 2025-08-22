@@ -46,17 +46,13 @@ jobs:
 
           echo "wheel-filename=flash_attn-${{ inputs.version }}+cu${WHEEL_CUDA_VERSION}torch${WHEEL_TORCH_VERSION}cxx11abiFALSE-cp${WHEEL_PYTHON_VERSION}-cp${WHEEL_PYTHON_VERSION}-linux_x86_64.whl" >> "$GITHUB_OUTPUT"
 
-      - run: |
-          curl -Is --fail https://github.com/Dao-AILab/flash-attention/releases/download/v${{ inputs.version }}/${{ steps.get-wheel-filename.outputs.wheel-filename }} || {
-            echo "::notice ::No corresponding official build found for current matrix configuration. Skipping build."
-            exit 0
-          }
+      - continue-on-error: true
+        run: |
+          curl -Is --fail https://github.com/Dao-AILab/flash-attention/releases/download/v${{ inputs.version }}/${{ steps.get-wheel-filename.outputs.wheel-filename }}
 
-          curl -Is --fail https://github.com/${{ github.repository }}/releases/download/v${{ inputs.version }}/${{ steps.get-wheel-filename.outputs.wheel-filename }} && {
-            echo "::notice ::Wheel already exists in the release. Skipping build."
-            exit 0
-          } || true
-
+      - if: ${{ success() }}
+        name: Install dependencies
+        run: |
           conda install \
             python=${{ matrix.python-version }} \
             nvidia::cuda=${{ matrix.cuda-version }}
@@ -67,10 +63,11 @@ jobs:
             pip \
             psutil \
             setuptools \
+            torch==${{ matrix.torch-version }} \
             wheel
-          uv pip install \
-            torch==${{ matrix.torch-version }}
 
+      - if: ${{ success() }}
+        run: |
           FLASH_ATTENTION_FORCE_BUILD=TRUE srun \
             --account $VILA_SLURM_ACCOUNT \
             --partition cpu \
@@ -78,11 +75,12 @@ jobs:
             uv run pip wheel --no-build-isolation --no-deps --verbose \
               flash-attn==${{ inputs.version }}
 
-          test $(ls *.whl | wc -l) -eq 1
-          mv *.whl ${{ steps.get-wheel-filename.outputs.wheel-filename }}
+      - if: ${{ success() }}
+        run: |
+          ls flash_attn-*.whl | xargs -I {} mv {} ${{ steps.get-wheel-filename.outputs.wheel-filename }}
 
-      - uses: actions/upload-artifact@v4
+      - if: ${{ success() }}
+        uses: actions/upload-artifact@v4
         with:
-          if-no-files-found: ignore
           name: ${{ steps.get-wheel-filename.outputs.wheel-filename }}
           path: ${{ steps.get-wheel-filename.outputs.wheel-filename }}
