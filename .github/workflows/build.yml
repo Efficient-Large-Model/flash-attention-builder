@@ -35,20 +35,22 @@ jobs:
           - "3.12"
     steps:
       - uses: astral-sh/setup-uv@v6
-      
-      - id: build-wheel
+
+      - id: get-wheel-filename
         run: |
           WHEEL_CUDA_VERSION="$(echo ${{ matrix.cuda-version }} | awk -F \. {'print $1 '})"
           WHEEL_PYTHON_VERSION="$(echo ${{ matrix.python-version }} | awk -F \. {'print $1 $2 '})"
           WHEEL_TORCH_VERSION="$(echo ${{ matrix.torch-version }} | awk -F \. {'print $1 "." $2'})"
-          WHEEL_FILENAME="flash_attn-${{ inputs.version }}+cu${WHEEL_CUDA_VERSION}torch${WHEEL_TORCH_VERSION}cxx11abiFALSE-cp${WHEEL_PYTHON_VERSION}-cp${WHEEL_PYTHON_VERSION}-linux_x86_64.whl"
 
-          curl -I --fail https://github.com/Dao-AILab/flash-attention/releases/download/v${{ inputs.version }}/${WHEEL_FILENAME} || {
+          echo "wheel-filename=flash_attn-${{ inputs.version }}+cu${WHEEL_CUDA_VERSION}torch${WHEEL_TORCH_VERSION}cxx11abiFALSE-cp${WHEEL_PYTHON_VERSION}-cp${WHEEL_PYTHON_VERSION}-linux_x86_64.whl" >> "$GITHUB_OUTPUT"
+
+      - run: |
+          curl -I --fail https://github.com/Dao-AILab/flash-attention/releases/download/v${{ inputs.version }}/${{ steps.get-wheel-filename.outputs.wheel-filename }} || {
             echo "::notice ::No corresponding official build found for current matrix configuration. Skipping build."
             exit 0
           }
 
-          curl -I --fail https://github.com/${{ github.repository }}/releases/download/v${{ inputs.version }}/${WHEEL_FILENAME} && {
+          curl -I --fail https://github.com/${{ github.repository }}/releases/download/v${{ inputs.version }}/${{ steps.get-wheel-filename.outputs.wheel-filename }} && {
             echo "::notice ::Wheel already exists in the release. Skipping build."
             exit 0
           } || true
@@ -79,13 +81,10 @@ jobs:
               flash-attn==${{ inputs.version }}
 
           test $(ls *.whl | wc -l) -eq 1
-          mv *.whl ${WHEEL_FILENAME}
-
-          echo "wheel-filename=${WHEEL_FILENAME}" >> $GITHUB_OUTPUT
+          mv *.whl ${{ steps.get-wheel-filename.outputs.wheel-filename }}
 
       - uses: actions/upload-artifact@v4
         with:
-          name: cuda${{ matrix.cuda-version }}-torch${{ matrix.torch-version }}-python${{ matrix.python-version }}
-          path: |
-            ${{ steps.build-wheel.outputs.wheel-filename }}
           if-no-files-found: ignore
+          name: ${{ steps.get-wheel-filename.outputs.wheel-filename }}
+          path: ${{ steps.get-wheel-filename.outputs.wheel-filename }}
