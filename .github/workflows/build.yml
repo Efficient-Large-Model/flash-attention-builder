@@ -46,14 +46,6 @@ jobs:
         run: |
           curl -Is --fail https://github.com/Dao-AILab/flash-attention/releases/download/v${{ inputs.version }}/${{ steps.get-wheel-filename.outputs.wheel-filename }}
 
-      # - if: ${{ success() }}
-      #   uses: Jimver/cuda-toolkit@v0.2.27
-      #   with:
-      #     cuda: ${{ matrix.cuda-version }}
-      #     linux-local-args: '["--toolkit"]'
-      #     method: 'network'
-      #     sub-packages: '["nvcc"]'
-
       - if: ${{ success() }}
         uses: astral-sh/setup-uv@v6
         with:
