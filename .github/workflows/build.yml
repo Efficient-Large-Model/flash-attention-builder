@@ -34,7 +34,9 @@ jobs:
           - "3.10"
           - "3.12"
     steps:
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
       - uses: astral-sh/setup-uv@v6
 
@@ -51,12 +53,7 @@ jobs:
           curl -Is --fail https://github.com/Dao-AILab/flash-attention/releases/download/v${{ inputs.version }}/${{ steps.get-wheel-filename.outputs.wheel-filename }}
 
       - if: ${{ success() }}
-        name: Install dependencies
         run: |
-          conda install \
-            python=${{ matrix.python-version }} \
-            nvidia::cuda=${{ matrix.cuda-version }}
-
           uv pip install \
             ninja \
             packaging \
