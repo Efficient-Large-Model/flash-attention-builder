@@ -44,7 +44,8 @@ jobs:
             wheel
 
       - run: |
-          echo $MAX_JOBS
+          free -h
+          nproc --all
           FLASH_ATTENTION_FORCE_BUILD=TRUE pip wheel --no-build-isolation --no-deps --verbose \
             flash-attn==${{ inputs.version }}
 
