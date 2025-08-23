@@ -1,16 +1,11 @@
 on:
   workflow_call:
     inputs:
-      is_latest:
-        type: boolean
       version:
         required: true
         type: string
   workflow_dispatch:
     inputs:
-      is_latest:
-        description: Whether this is the latest release
-        type: boolean
       version:
         description: The version of the release
         required: true
@@ -18,12 +13,11 @@ on:
 
 jobs:
   build:
-    runs-on: self-hosted
+    continue-on-error: true
+    runs-on: cpu
     strategy:
       fail-fast: false
       matrix:
-        cuda-version:
-          - "12.9.1"
         torch-version:
           - "2.4.1"
           - "2.5.1"
@@ -34,26 +28,12 @@ jobs:
           - "3.10"
           - "3.12"
     steps:
-      - id: get-wheel-filename
-        run: |
-          WHEEL_CUDA_VERSION="$(echo ${{ matrix.cuda-version }} | awk -F. '{print $1}')"
-          WHEEL_PYTHON_VERSION="$(echo ${{ matrix.python-version }} | awk -F. '{print $1 $2}')"
-          WHEEL_TORCH_VERSION="$(echo ${{ matrix.torch-version }} | awk -F. '{print $1 "." $2}')"
-
-          echo "wheel-filename=flash_attn-${{ inputs.version }}+cu${WHEEL_CUDA_VERSION}torch${WHEEL_TORCH_VERSION}cxx11abiFALSE-cp${WHEEL_PYTHON_VERSION}-cp${WHEEL_PYTHON_VERSION}-linux_x86_64.whl" >> "$GITHUB_OUTPUT"
-
-      - continue-on-error: true
-        run: |
-          curl -Is --fail https://github.com/Dao-AILab/flash-attention/releases/download/v${{ inputs.version }}/${{ steps.get-wheel-filename.outputs.wheel-filename }}
-
-      - if: ${{ success() }}
-        uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v6
         with:
           activate-environment: true
           python-version: ${{ matrix.python-version }}
 
-      - if: ${{ success() }}
-        run: |
+      - run: |
           uv pip install \
             ninja \
             packaging \
@@ -63,17 +43,22 @@ jobs:
             torch==${{ matrix.torch-version }} \
             wheel
 
-      - if: ${{ success() }}
-        run: |
-          FLASH_ATTENTION_FORCE_BUILD=TRUE uv run pip wheel --no-build-isolation --no-deps --verbose \
+      - run: |
+          FLASH_ATTENTION_FORCE_BUILD=TRUE pip wheel --no-build-isolation --no-deps --verbose \
             flash-attn==${{ inputs.version }}
 
-      - if: ${{ success() }}
+      - id: rename-whl
         run: |
-          ls flash_attn-*.whl | xargs -I {} mv {} ${{ steps.get-wheel-filename.outputs.wheel-filename }}
+          cuda_version="$(cat /usr/local/cuda/version.json | jq -r '.cuda.version' | awk -F. '{print $1}')"
+          torch_version="$(echo ${{ matrix.torch-version }} | awk -F. '{print $1 "." $2}')"
 
-      - if: ${{ success() }}
-        uses: actions/upload-artifact@v4
+          old_whl="$(ls *.whl)"
+          new_whl="$(echo $old_whl | sed "s/-${{ inputs.version }}-/-${{ inputs.version }}+cu${cuda_version}torch${torch_version}cxx11abiFALSE-/")"
+          mv "$old_whl" "$new_whl"
+
+          echo "whl-filename=$new_whl" >> "${GITHUB_OUTPUT}"
+
+      - uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.get-wheel-filename.outputs.wheel-filename }}
-          path: ${{ steps.get-wheel-filename.outputs.wheel-filename }}
+          name: ${{ steps.rename-whl.outputs.whl-filename }}
+          path: ${{ steps.rename-whl.outputs.whl-filename }}

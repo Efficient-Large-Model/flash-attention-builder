@@ -9,43 +9,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  get-versions:
+  get-latest:
     runs-on: ubuntu-latest
     outputs:
-      versions: ${{ steps.get-versions.outputs.versions }}
+      version: ${{ steps.get-latest.outputs.version }}
     steps:
-      - id: get-versions
+      - id: get-latest
         run: |
-          curl -s https://api.github.com/repos/Dao-AILab/flash-attention/releases?per_page=10 \
-            | jq -r '.[] | select(.assets | length > 0) | .tag_name | sub("^v"; "")' \
-            | jq -Rcs 'split("\n") | map(select(length > 0))' \
-            | echo "versions=$(cat)" >> "$GITHUB_OUTPUT"
+          curl -s https://api.github.com/repos/Dao-AILab/flash-attention/releases?per_page=1 \
+            | jq -r '.[0].tag_name | sub("^v"; "")' \
+            | echo "version=$(cat)" >> "${GITHUB_OUTPUT}"
 
   build:
     needs:
-      - get-versions
+      - get-latest
     permissions:
       contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        version: ${{ fromJSON(needs.get-versions.outputs.versions) }}
     uses: ./.github/workflows/build.yml
     with:
-      is_latest: ${{ matrix.version == fromJSON(needs.get-versions.outputs.versions)[0] }}
-      version: ${{ matrix.version }}
+      version: ${{ needs.get-latest.outputs.version }}
 
   release:
     needs:
       - build
-      - get-versions
+      - get-latest
     permissions:
       contents: write
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        version: ${{ fromJSON(needs.get-versions.outputs.versions) }}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -53,7 +43,6 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
-          files: |
-            *.whl
+          files: "*.whl"
           preserve_order: true
-          tag_name: v${{ matrix.version }}
+          tag_name: v${{ needs.get-latest.outputs.version }}
