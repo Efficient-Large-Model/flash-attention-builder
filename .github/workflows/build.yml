@@ -15,7 +15,6 @@ jobs:
   build:
     runs-on: self-hosted
     strategy:
-      fail-fast: false
       matrix:
         torch-version:
           - "2.3.1"
@@ -43,7 +42,7 @@ jobs:
             pip \
             psutil \
             setuptools \
-            torch~=${{ matrix.torch-version }} \
+            torch==${{ matrix.torch-version }} \
             wheel
 
       - run: |
