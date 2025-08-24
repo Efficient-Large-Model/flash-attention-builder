@@ -13,7 +13,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -27,6 +27,15 @@ jobs:
           - "3.10"
           - "3.12"
     steps:
+      - uses: easimon/maximize-build-space@master
+        with:
+          remove-android: true
+          remove-codeql: true
+          remove-docker-images: true
+          remove-dotnet: true
+          remove-haskell: true
+          swap-size-mb: 10240
+
       - uses: Jimver/cuda-toolkit@v0.2.27
         with:
           cuda: "12.9.1"
