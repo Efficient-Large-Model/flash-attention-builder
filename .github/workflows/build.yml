@@ -48,7 +48,7 @@ jobs:
 
       - id: rename-whl
         run: |
-          cuda_version="$(cat /usr/local/cuda/version.json | jq -r '.cuda.version' | awk -F. '{print $1}')"
+          cuda_version="$(nvcc --version | grep -o 'release [0-9]*\.[0-9]*' | awk '{print $2}' | awk -F. '{print $1}')"
           torch_version="$(echo ${{ matrix.torch-version }} | awk -F. '{print $1 "." $2}')"
 
           old_whl="$(ls *.whl)"
