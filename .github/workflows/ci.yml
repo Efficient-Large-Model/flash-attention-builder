@@ -16,8 +16,6 @@ jobs:
     steps:
       - id: get-latest
         run: |
-          free -h
-          nproc --all
           curl -s https://api.github.com/repos/Dao-AILab/flash-attention/releases?per_page=1 \
             | jq -r '.[0].tag_name | sub("^v"; "")' \
             | echo "version=$(cat)" >> "${GITHUB_OUTPUT}"
