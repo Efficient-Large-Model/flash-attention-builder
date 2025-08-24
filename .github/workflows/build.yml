@@ -27,11 +27,6 @@ jobs:
           - "3.10"
           - "3.12"
     steps:
-      - uses: actions/checkout@v5
-
-      - run: |
-          rm -rf ~/.cache/uv
-
       - uses: astral-sh/setup-uv@v6
         with:
           activate-environment: true
