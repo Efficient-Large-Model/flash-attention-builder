@@ -34,7 +34,8 @@ jobs:
           remove-docker-images: true
           remove-dotnet: true
           remove-haskell: true
-          swap-size-mb: 10240
+          root-reserve-mb: 16384
+          swap-size-mb: 16384
 
       - uses: Jimver/cuda-toolkit@v0.2.27
         with:
