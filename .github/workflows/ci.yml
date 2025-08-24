@@ -1,5 +1,4 @@
 on:
-  push:
   schedule:
     - cron: 0 0 * * *
   workflow_dispatch:
@@ -28,21 +27,3 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       version: ${{ needs.get-latest.outputs.version }}
-
-  release:
-    needs:
-      - build
-      - get-latest
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          merge-multiple: true
-
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: "*.whl"
-          preserve_order: true
-          tag_name: v${{ needs.get-latest.outputs.version }}

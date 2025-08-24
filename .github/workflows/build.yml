@@ -61,3 +61,20 @@ jobs:
         with:
           name: ${{ steps.rename-whl.outputs.whl-filename }}
           path: ${{ steps.rename-whl.outputs.whl-filename }}
+
+  release:
+    needs:
+      - build
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: "*.whl"
+          preserve_order: true
+          tag_name: v${{ inputs.version }}
