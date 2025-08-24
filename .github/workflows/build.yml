@@ -30,6 +30,11 @@ jobs:
           - "3.12"
           - "3.13"
     steps:
+      - run: |
+          apt update
+          apt install -y --no-install-recommends \
+            git
+
       - uses: astral-sh/setup-uv@v6
         with:
           activate-environment: true
