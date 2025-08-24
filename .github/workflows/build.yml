@@ -13,7 +13,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
@@ -27,23 +27,6 @@ jobs:
           - "3.10"
           - "3.12"
     steps:
-      - uses: easimon/maximize-build-space@master
-        with:
-          remove-android: true
-          remove-codeql: true
-          remove-docker-images: true
-          remove-dotnet: true
-          remove-haskell: true
-          root-reserve-mb: 16384
-          swap-size-mb: 16384
-
-      - uses: Jimver/cuda-toolkit@v0.2.27
-        with:
-          cuda: "12.9.1"
-          linux-local-args: '["--toolkit"]'
-          method: "network"
-          sub-packages: '["nvcc"]'
-
       - uses: astral-sh/setup-uv@v6
         with:
           activate-environment: true
