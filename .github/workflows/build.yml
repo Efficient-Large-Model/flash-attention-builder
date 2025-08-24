@@ -13,7 +13,6 @@ on:
 
 jobs:
   build:
-    continue-on-error: true
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
@@ -28,6 +27,13 @@ jobs:
           - "3.10"
           - "3.12"
     steps:
+      - uses: Jimver/cuda-toolkit@v0.2.27
+        with:
+          cuda: "12.9.1"
+          linux-local-args: '["--toolkit"]'
+          method: "network"
+          sub-packages: '["nvcc"]'
+
       - uses: astral-sh/setup-uv@v6
         with:
           activate-environment: true
